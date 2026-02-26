@@ -1,283 +1,678 @@
 <!DOCTYPE html>
 <html lang="ko">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>전쟁군주 아베르지안 작전 지침서</title>
+    <title>아베르지안 전술 지휘시스템</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&display=swap');
-
-        body {
-            font-family: 'Noto Sans KR', sans-serif;
-            background-color: #020617;
-            color: #e2e8f0;
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+KR:wght@300;400;700;900&display=swap');
+        
+        :root {
+            --void-dark: #05000a;
+            --void-purple: #581c87;
+            --void-glow: #d8b4fe;
+            --neon-blue: #0ea5e9;
+            --neon-red: #f43f5e;
+            --neon-green: #22c55e;
+            --neon-yellow: #facc15;
         }
 
-        .void-cell {
-            transition: all 0.2s ease-in-out;
+        body { 
+            font-family: 'Noto Sans KR', sans-serif; 
+            background-color: var(--void-dark); 
+            color: #e2e8f0; 
+            overflow-x: hidden; 
+            margin: 0; 
+        }
+
+        /* === 스플래시 화면 === */
+        #splash-screen {
+            position: fixed; inset: 0; z-index: 9999;
+            background: radial-gradient(circle at center, #1e1b4b 0%, #020617 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
-            position: relative;
-            overflow: hidden;
         }
+        #splash-screen.hidden-splash { opacity: 0; visibility: hidden; transform: scale(1.1); filter: blur(10px); }
+
+        .big-boss-svg { width: 350px; height: 450px; animation: float-boss 6s ease-in-out infinite; filter: drop-shadow(0 0 30px rgba(58, 0, 255, 0.5)); }
+        @keyframes float-boss { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+
+        /* === 우주 배경 & 스캔라인 === */
+        .cosmic-bg {
+            position: fixed; inset: 0; z-index: -1;
+            background: radial-gradient(circle at 50% 50%, rgba(76, 29, 149, 0.15) 0%, transparent 50%), radial-gradient(circle at 0% 0%, rgba(56, 189, 248, 0.1) 0%, transparent 40%), radial-gradient(circle at 100% 100%, rgba(244, 63, 94, 0.1) 0%, transparent 40%);
+            animation: nebula-pulse 10s infinite alternate;
+        }
+        .scanlines {
+            position: fixed; inset: 0; pointer-events: none; z-index: 999;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+            background-size: 100% 4px; animation: scanline 0.2s linear infinite; opacity: 0.15;
+        }
+        @keyframes nebula-pulse { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(1.1); opacity: 1; } }
+        
+        /* === 패널 및 그리드 === */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5); border-radius: 8px; position: relative; overflow: hidden;
+        }
+        .glass-panel::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.5), transparent); }
+
+        .void-grid-container { border: 1px solid rgba(139, 92, 246, 0.3); box-shadow: 0 0 50px rgba(88, 28, 135, 0.3); cursor: crosshair; }
+        .void-cell { background: rgba(2, 6, 23, 0.8); border: 1px solid rgba(255, 255, 255, 0.05); transition: all 0.3s ease; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .void-cell:hover { background: rgba(56, 189, 248, 0.1); border-color: rgba(56, 189, 248, 0.3); }
 
         .void-occupied {
-            background: radial-gradient(circle, #4c1d95 0%, #1e1b4b 100%);
-            box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
-            border-color: #8b5cf6 !important;
+            background: radial-gradient(circle at center, #000 20%, #2e1065 100%) !important; border: 1px solid #a855f7 !important;
+            box-shadow: inset 0 0 30px #581c87, 0 0 20px rgba(168, 85, 247, 0.6); animation: void-pulse 2s infinite alternate;
+        }
+        @keyframes void-pulse { from { box-shadow: inset 0 0 20px #581c87; } to { box-shadow: inset 0 0 50px #a855f7, 0 0 10px #d8b4fe; } }
+
+        .suggested-light { 
+            box-shadow: inset 0 0 60px rgba(34, 197, 94, 0.3), 0 0 40px rgba(34, 197, 94, 0.8) !important; 
+            border: 4px solid #4ade80 !important; 
+            z-index: 50;
+            animation: target-pulse 0.8s infinite alternate;
+        }
+        @keyframes target-pulse { from { filter: brightness(1); transform: scale(1); } to { filter: brightness(1.3); transform: scale(0.98); } }
+        
+        .suggested-light::after { 
+            content: '다음 목표 위치'; 
+            position: absolute; top: 12px; left: 50%; transform: translateX(-50%); 
+            font-size: 11px; font-weight: 900; color: #fff; 
+            background: #22c55e; padding: 2px 8px; border-radius: 4px;
+            letter-spacing: 1px; text-shadow: 0 1px 3px rgba(0,0,0,0.5); font-family: 'Noto Sans KR'; 
+            z-index: 60; border: 1px solid rgba(255,255,255,0.4);
         }
 
-        .void-occupied::after {
-            content: '점령 완료';
-            font-size: 0.75rem;
-            font-weight: bold;
-            color: #ddd6fe;
-            position: absolute;
-            bottom: 10px;
-        }
+        /* === 텍스트 & 기타 === */
+        .orbitron { font-family: 'Orbitron', sans-serif; }
+        .glitch-text { position: relative; display: inline-block; }
+        .glitch-text::before, .glitch-text::after { content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.8; pointer-events: none;}
+        .glitch-text::before { color: #0ff; z-index: -1; animation: glitch-anim-1 2s infinite linear alternate-reverse; }
+        .glitch-text::after { color: #f0f; z-index: -2; animation: glitch-anim-2 2s infinite linear alternate-reverse; }
+        @keyframes glitch-anim-1 { 0% { clip-path: inset(20% 0 80% 0); transform: translate(-2px,0); } 100% { clip-path: inset(60% 0 10% 0); transform: translate(2px,0); } }
+        @keyframes glitch-anim-2 { 0% { clip-path: inset(10% 0 60% 0); transform: translate(2px,0); } 100% { clip-path: inset(80% 0 5% 0); transform: translate(-2px,0); } }
 
-        .cosmic-shell {
-            border-color: #facc15 !important;
-            background: rgba(250, 204, 21, 0.05);
-        }
+        .bingo-line { position: absolute; background: #f43f5e; box-shadow: 0 0 20px #f43f5e, 0 0 40px #f43f5e; z-index: 60; pointer-events: none; border-radius: 100px; }
+        .number-label { position: absolute; font-family: 'Orbitron'; font-size: 3.5rem; font-weight: 900; color: rgba(255, 255, 255, 0.03); pointer-events: none; z-index: 0; }
+        
+        /* 특수 마커 */
+        .cosmic-shell { border: 2px solid #facc15 !important; }
+        .shell-indicator { position: absolute; top: 8px; right: 8px; background: #facc15; color: #000; font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 4px; z-index: 30; }
+        .soaking-mark { position: absolute; bottom: 10px; left: 10px; background: rgba(14, 165, 233, 0.9); color: #fff; font-size: 10px; font-weight: 900; padding: 3px 7px; border-radius: 4px; z-index: 30; border: 1px solid #fff; animation: soak-pulse 1.5s infinite; }
+        @keyframes soak-pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; box-shadow: 0 0 10px #0ea5e9; } }
 
-        .shell-indicator {
-            position: absolute;
-            top: 6px;
-            right: 6px;
-            background: #facc15;
-            color: #000;
-            font-size: 9px;
-            font-weight: 900;
-            padding: 1px 4px;
-            border-radius: 3px;
-            z-index: 10;
-        }
-
-        .gather-point {
-            position: absolute;
-            width: 38px;
-            height: 38px;
-            background: rgba(34, 197, 94, 0.7);
-            border: 2px solid #4ade80;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 8px;
-            font-weight: bold;
-            color: white;
-            animation: pulse-green 1.5s infinite;
-            z-index: 20;
-            pointer-events: none;
-        }
-
-        @keyframes pulse-green {
-            0% {
-                transform: scale(0.9);
-                opacity: 0.6;
-            }
-
-            50% {
-                transform: scale(1.1);
-                opacity: 0.9;
-            }
-
-            100% {
-                transform: scale(0.9);
-                opacity: 0.6;
-            }
-        }
-
-        @keyframes pulse-red {
-
-            0%,
-            100% {
-                border-color: #ef4444;
-                box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
-            }
-
-            50% {
-                border-color: #991b1b;
-                box-shadow: 0 0 30px rgba(239, 68, 68, 0.7);
-            }
-        }
+        /* 미니 보스 SVG 애니메이션 */
+        .floater { animation: float 2.5s ease-in-out infinite; }
+        .pulse-core { animation: pulse-anim 1.5s infinite alternate ease-in-out; transform-origin: 128px 165px; }
+        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-8px); } }
+        @keyframes pulse-anim { 0% { opacity: 0.7; transform: scale(0.9); } 100% { opacity: 1; transform: scale(1.1); } }
     </style>
 </head>
+<body class="p-4 md:p-8 min-h-screen flex flex-col items-center justify-center">
 
-<body class="p-4 md:p-8">
-    <div class="max-w-md mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl">
-        <!-- 헤더 -->
-        <div class="flex justify-between items-start mb-6">
-            <div>
-                <h1 class="text-xl font-bold text-indigo-400">전쟁군주 아베르지안 작전 지침</h1>
-                <p class="text-[10px] text-slate-500 mt-1 uppercase tracking-tighter">Tactical Command System v3.0</p>
+    <!-- 1. 인트로 스플래시 화면 -->
+    <div id="splash-screen">
+        <svg class="big-boss-svg" viewBox="0 0 800 1000" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="body_grad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#3a00ff"/><stop offset="40%" stop-color="#1c0080"/><stop offset="100%" stop-color="#0a0026"/></linearGradient>
+              <radialGradient id="core_grad" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#00ffff"/><stop offset="30%" stop-color="#0066ff"/><stop offset="70%" stop-color="#110066" stop-opacity="0.5"/><stop offset="100%" stop-color="#110066" stop-opacity="0"/></radialGradient>
+              <linearGradient id="armor" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#d4af37"/><stop offset="30%" stop-color="#a88022"/><stop offset="70%" stop-color="#543e0a"/><stop offset="100%" stop-color="#211702"/></linearGradient>
+              <linearGradient id="armor_dark" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7a5c16"/><stop offset="100%" stop-color="#140f02"/></linearGradient>
+              <filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="15" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+              <filter id="glow_soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+              <g id="right_armor_and_arm">
+                <path d="M 430 360 C 520 380 540 450 540 550 C 540 640 510 680 490 650 C 470 580 460 480 430 450 Z" fill="url(#body_grad)"/>
+                <path d="M 440 260 C 480 150 510 90 490 50 C 590 120 630 220 590 320 Z" fill="url(#armor_dark)" stroke="#1a1103" stroke-width="3"/>
+                <path d="M 420 350 L 490 280 L 540 250 L 590 280 L 670 250 L 700 290 L 760 300 L 700 340 L 710 400 L 630 380 L 590 440 L 520 420 Z" fill="url(#armor)" stroke="#1a1103" stroke-width="4"/>
+                <path d="M 400 350 L 460 380 L 440 430 L 480 480 L 440 530 L 420 570 L 400 560 Z" fill="url(#armor)" stroke="#1a1103" stroke-width="3"/>
+                <path d="M 460 500 L 570 470 L 590 570 L 470 560 Z" fill="url(#armor)" stroke="#1a1103" stroke-width="3"/>
+                <path d="M 570 470 L 630 440 L 590 510 Z" fill="url(#armor)"/><path d="M 590 570 L 650 610 L 580 540 Z" fill="url(#armor)"/>
+                <circle cx="560" cy="270" r="45" fill="#000000" stroke="#0044ff" stroke-width="12" filter="url(#glow)"/>
+                <circle cx="560" cy="270" r="30" fill="#000000" stroke="#00ffff" stroke-width="4" filter="url(#glow_soft)"/>
+                <circle cx="560" cy="270" r="20" fill="#000000"/>
+              </g>
+            </defs>
+            <style>.pulsing-core { animation: pulse 4s infinite alternate ease-in-out; transform-origin: center; }</style>
+            <g opacity="0.9">
+              <path d="M 400 300 C 450 300 480 450 490 600 C 500 750 580 880 700 900 C 740 910 750 960 650 970 C 500 990 300 990 150 970 C 50 960 60 910 100 900 C 220 880 300 750 310 600 C 320 450 350 300 400 300 Z" fill="url(#body_grad)"/>
+              <path d="M 400 400 C 430 400 450 550 450 700 C 450 850 550 900 600 920 C 500 950 300 950 200 920 C 250 900 350 850 350 700 C 350 550 370 400 400 400 Z" fill="#260099" opacity="0.6" filter="url(#glow)"/>
+            </g>
+            <ellipse cx="400" cy="480" rx="60" ry="160" fill="url(#core_grad)" filter="url(#glow)"/>
+            <ellipse cx="400" cy="480" rx="25" ry="100" fill="#ccffff" filter="url(#glow)" class="pulsing-core"/>
+            <ellipse cx="400" cy="480" rx="10" ry="60" fill="#ffffff" filter="url(#glow_soft)"/>
+            <use href="#right_armor_and_arm" />
+            <use href="#right_armor_and_arm" transform="translate(800, 0) scale(-1, 1)" />
+            <path d="M 360 270 L 400 240 L 440 270 L 420 300 L 380 300 Z" fill="url(#armor)" stroke="#1a1103" stroke-width="2"/>
+            <path d="M 385 200 L 415 200 L 430 250 L 370 250 Z" fill="#0f0033"/>
+            <circle cx="400" cy="225" r="25" fill="none" stroke="#0044ff" stroke-width="4" filter="url(#glow_soft)"/>
+            <circle cx="400" cy="220" r="8" fill="#00ffff" filter="url(#glow)"/>
+            <path d="M 400 150 L 410 200 L 390 200 Z" fill="url(#armor)"/><path d="M 400 180 L 440 160 L 420 200 Z" fill="url(#armor)"/><path d="M 400 180 L 360 160 L 380 200 Z" fill="url(#armor)"/>
+        </svg>
+        <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 tracking-tighter mt-4 orbitron">SYSTEM INITIALIZED</h1>
+        <p class="text-indigo-300 tracking-[0.5em] text-xs font-bold mt-2 uppercase">공허 프로토콜 가동 중</p>
+        <p class="text-white text-xs mt-12 animate-pulse font-bold orbitron uppercase">CLICK TO DEPLOY MATRIX</p>
+    </div>
+
+    <div class="cosmic-bg"></div>
+    <div class="scanlines"></div>
+
+    <!-- 2. 메인 UI 컨테이너 -->
+    <div class="max-w-7xl w-full mx-auto relative z-10 flex flex-col min-h-screen pt-4 pb-8">
+        
+        <!-- 헤더 영역 -->
+        <div class="glass-panel p-6 mb-6 flex flex-col md:flex-row justify-between items-center gap-6 shrink-0">
+            <div class="flex items-center gap-6">
+                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-900 to-black border border-indigo-500 shadow-[0_0_20px_rgba(99,102,241,0.5)] flex items-center justify-center relative overflow-hidden">
+                    <svg viewBox="0 0 100 100" class="w-full h-full relative z-10 p-2"><circle cx="50" cy="50" r="40" fill="#000" stroke="#a855f7" stroke-width="4"/><circle cx="50" cy="50" r="20" fill="#0ea5e9" class="animate-pulse"/></svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 tracking-tighter drop-shadow-sm orbitron">아베르지안 전술 지휘시스템</h1>
+                    <p class="text-[11px] text-indigo-200 uppercase tracking-[0.3em] font-bold mt-1">계층적 위상 동기화 작전 시스템</p>
+                </div>
             </div>
-            <div id="diff-tag"
-                class="px-2 py-1 bg-slate-800 rounded text-[10px] font-bold text-slate-400 border border-slate-700">
-                NORMAL
+            
+            <div class="flex gap-2">
+                <button id="btn-normal" class="diff-btn text-xs px-5 py-3 bg-indigo-600 border border-indigo-500 text-white transition-all tracking-widest font-bold rounded">일반</button>
+                <button id="btn-heroic" class="diff-btn text-xs px-5 py-3 bg-indigo-950/50 border border-indigo-800 text-indigo-300 hover:bg-indigo-600 hover:text-white transition-all tracking-widest font-bold rounded">영웅</button>
+                <button id="btn-mythic" class="diff-btn text-xs px-5 py-3 bg-indigo-950/50 border border-indigo-800 text-indigo-300 hover:bg-purple-600 hover:text-white transition-all tracking-widest font-bold rounded">신화</button>
+                <button id="toggle-sound" class="text-xs px-4 py-3 bg-slate-800 border border-slate-700 text-slate-400 hover:text-white rounded transition-all">🔊 소리 켬</button>
             </div>
         </div>
 
-        <!-- 난이도 선택 -->
-        <div class="grid grid-cols-3 gap-2 mb-6">
-            <button onclick="setDifficulty('normal')" id="btn-normal"
-                class="py-2 text-xs font-bold rounded-xl bg-indigo-600 text-white border border-indigo-500">일반</button>
-            <button onclick="setDifficulty('heroic')" id="btn-heroic"
-                class="py-2 text-xs font-bold rounded-lg bg-slate-800 text-slate-400 border border-slate-700">영웅</button>
-            <button onclick="setDifficulty('mythic')" id="btn-mythic"
-                class="py-2 text-xs font-bold rounded-lg bg-slate-800 text-slate-400 border border-slate-700">신화</button>
-        </div>
-
-        <!-- 그리드 -->
-        <div id="grid-container" class="grid grid-cols-3 gap-2 aspect-square mb-6 relative">
-            <!-- JS -->
-        </div>
-
-        <!-- 상태 메시지 -->
-        <div class="bg-slate-950 rounded-xl p-4 border border-slate-800 mb-6">
-            <div id="instruction" class="text-sm font-medium text-indigo-300 text-center">
-                점령 구역을 선택하십시오.
-            </div>
-        </div>
-
-        <!-- 주의사항 및 가중치 가이드 (복구됨) -->
-        <div class="bg-slate-950 rounded-xl p-4 border border-indigo-900/30 mb-6 text-[11px] leading-relaxed">
-            <div class="mb-3">
-                <p class="text-indigo-400 font-bold mb-1 underline underline-offset-4">알고리즘 기반 가중치 분석</p>
-                <div class="grid grid-cols-3 gap-1 text-center mt-2">
-                    <div class="p-1 bg-red-950/30 border border-red-900/50 rounded text-red-300">중앙: 가중치 4</div>
-                    <div class="p-1 bg-orange-950/30 border border-orange-900/50 rounded text-orange-300">모서리: 가중치 3
+        <!-- 메인 전장 및 대시보드 -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-6 flex-grow">
+            <!-- 맵(Grid) 영역 -->
+            <div class="lg:col-span-7 xl:col-span-8 relative flex flex-col justify-center">
+                <p class="absolute -top-6 left-0 text-xs text-indigo-300 tracking-widest font-bold uppercase">좌클릭: 칸 점령 상태 전환 / 우클릭: 보스 위치 지정</p>
+                
+                <div id="grid-container" class="void-grid-container grid grid-cols-3 gap-1 aspect-square rounded-2xl overflow-hidden backdrop-blur-md relative">
+                    
+                    <!-- 보스 마커 -->
+                    <div id="boss-entity" style="display: none; position: absolute; width: 100px; height: 100px; z-index: 100; pointer-events: none; transform: translate(-50%, -50%);">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="100%" height="100%">
+                          <defs>
+                            <linearGradient id="mini_body_grad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#7b2cbf"/><stop offset="60%" stop-color="#3c096c"/><stop offset="100%" stop-color="#10002b"/></linearGradient>
+                            <linearGradient id="mini_armor" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#ffea00"/><stop offset="50%" stop-color="#ffaa00"/><stop offset="100%" stop-color="#995c00"/></linearGradient>
+                            <linearGradient id="mini_armor_dark" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#cc8800"/><stop offset="100%" stop-color="#331a00"/></linearGradient>
+                            <filter id="mini_glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="3.5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                            <g id="mini_right_side">
+                              <path d="M 135 90 L 165 35 L 180 70 Z" fill="url(#mini_armor_dark)" stroke="#3a1c00" stroke-width="2" stroke-linejoin="round"/>
+                              <path d="M 175 160 C 210 165, 215 195, 195 210 C 185 195, 175 185, 165 170 Z" fill="url(#mini_body_grad)"/>
+                              <path d="M 160 145 L 195 130 L 210 150 L 170 160 Z" fill="url(#mini_armor)" stroke="#3a1c00" stroke-width="2.5" stroke-linejoin="round"/>
+                              <path d="M 128 105 L 160 90 L 205 45 L 190 85 L 230 105 L 185 120 L 155 130 Z" fill="url(#mini_armor)" stroke="#3a1c00" stroke-width="3" stroke-linejoin="round"/>
+                              <circle cx="185" cy="65" r="14" fill="#000000" stroke="#0055ff" stroke-width="4" filter="url(#mini_glow)"/>
+                              <circle cx="185" cy="65" r="5" fill="none" stroke="#00ffff" stroke-width="2"/>
+                            </g>
+                          </defs>
+                          <g class="floater">
+                            <path d="M 65 225 C 65 130, 90 95, 128 95 C 166 95, 191 130, 191 225 C 191 245, 150 235, 128 240 C 106 235, 65 245, 65 225 Z" fill="url(#mini_body_grad)"/>
+                            <ellipse cx="128" cy="165" rx="22" ry="35" fill="#00ffff" filter="url(#mini_glow)" class="pulse-core"/>
+                            <ellipse cx="128" cy="165" rx="8" ry="20" fill="#ffffff" class="pulse-core"/>
+                            <use href="#mini_right_side" />
+                            <use href="#mini_right_side" transform="translate(256, 0) scale(-1, 1)" />
+                            <path d="M 105 105 L 128 120 L 151 105 L 128 95 Z" fill="url(#mini_armor)" stroke="#3a1c00" stroke-width="2"/>
+                            <circle cx="128" cy="70" r="24" fill="#1b004a"/>
+                            <circle cx="128" cy="70" r="24" fill="none" stroke="#5d2db8" stroke-width="2"/>
+                            <ellipse cx="114" cy="72" rx="4" ry="7" fill="#00ffff" transform="rotate(20 114 72)" filter="url(#mini_glow)"/>
+                            <ellipse cx="142" cy="72" rx="4" ry="7" fill="#00ffff" transform="rotate(-20 142 72)" filter="url(#mini_glow)"/>
+                            <circle cx="114" cy="70" r="1.5" fill="#ffffff"/>
+                            <circle cx="142" cy="70" r="1.5" fill="#ffffff"/>
+                            <path d="M 128 25 L 116 55 L 140 55 Z" fill="url(#mini_armor)" stroke="#3a1c00" stroke-width="2" stroke-linejoin="round"/>
+                            <path d="M 128 35 L 128 50" stroke="#ffea00" stroke-width="2"/>
+                          </g>
+                        </svg>
                     </div>
-                    <div class="p-1 bg-blue-950/30 border border-blue-900/50 rounded text-blue-300">변: 가중치 2</div>
+
+                    <div id="bingo-visual" class="absolute inset-0 pointer-events-none z-[70]"></div>
                 </div>
             </div>
 
-            <div class="space-y-2">
-                <p class="text-slate-400"><strong class="text-slate-200">1. 이격 주차:</strong> 보스와 하수인은 반드시 <span
-                        class="text-yellow-500">10m 이상</span> 떨어뜨려야 합니다.</p>
-                <p class="text-slate-400"><strong class="text-slate-200">2. 빙고 방지:</strong> 가로, 세로, 대각선 중 한 줄이 완성되면
-                    <span class="text-red-500 font-bold">광포화</span>가 발동합니다.</p>
-                <div id="heroic-notes" class="hidden">
-                    <p class="text-green-400 font-bold border-t border-slate-800 pt-2 mt-2">영웅 난이도 추가 지침:</p>
-                    <p class="text-slate-400">• <span class="text-green-400">본진 집결(G):</span> 구체자 파괴 시 녹색 원 위치에 뭉쳐서 빔
-                        피해를 분담하십시오.</p>
+            <!-- 상태/추천 패널 -->
+            <div class="lg:col-span-5 xl:col-span-4 flex flex-col gap-4 mt-6 lg:mt-0">
+                <div class="glass-panel flex flex-col items-center justify-center py-8 border-red-500/20 shadow-[0_0_30px_rgba(220,38,38,0.1)]">
+                    <p class="text-[11px] text-red-400 font-black mb-1 tracking-[0.3em] uppercase">현재 전멸 위협 지수</p>
+                    <p id="stat-max-line" class="text-6xl font-black text-red-500 tracking-tighter orbitron glitch-text" data-text="0%">0%</p>
                 </div>
-                <div id="mythic-notes" class="hidden">
-                    <p class="text-yellow-400 font-bold border-t border-slate-800 pt-2 mt-2">신화 난이도 추가 지침:</p>
-                    <p class="text-slate-400">• <span class="text-yellow-400">우주의 껍질:</span> 징표 대상자 해제를 통해 보호막 중첩(S)을
-                        제거해야 점령이 가능합니다.</p>
+                
+                <div id="suggest-card" class="glass-panel flex flex-col items-center justify-center py-8 border-indigo-500/30 transition-all duration-500 h-full">
+                    <p class="text-[11px] text-indigo-300 font-black mb-3 tracking-[0.2em] text-center uppercase">최적 전술 이동 경로 추천</p>
+                    <p id="stat-suggested" class="text-7xl font-black text-slate-400 transition-all italic orbitron mb-3">대기</p>
+                    <div class="px-4 py-2 bg-indigo-950/80 rounded border border-indigo-700/50 w-4/5 text-center">
+                        <p id="suggest-subtitle" class="text-[11px] text-indigo-200 font-bold tracking-wider">사용자 입력 대기 중</p>
+                    </div>
+                </div>
+
+                 <div class="glass-panel p-5 flex flex-col justify-center gap-3">
+                    <div class="flex justify-between items-end border-b border-white/5 pb-2">
+                        <span class="text-[11px] text-slate-400 tracking-widest font-bold uppercase">현재 총 가중치 합계</span>
+                        <span id="stat-total-weight" class="text-xl font-black text-white orbitron">0 / 14</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 gap-2 mt-1">
+                        <div class="flex justify-between items-center text-[11px] p-1.5 bg-cyan-950/20 border border-cyan-900/30 rounded">
+                            <span class="text-slate-300 font-bold tracking-wide">1순위: 변 구역 (Side)</span>
+                            <span class="text-cyan-400 font-black orbitron">가중치 2</span>
+                        </div>
+                        <div class="flex justify-between items-center text-[11px] p-1.5 bg-purple-950/20 border border-purple-900/30 rounded">
+                            <span class="text-slate-300 font-bold tracking-wide">2순위: 모서리 구역 (Corner)</span>
+                            <span class="text-purple-400 font-black orbitron">가중치 3</span>
+                        </div>
+                        <div class="flex justify-between items-center text-[11px] p-1.5 bg-yellow-950/20 border border-yellow-900/30 rounded">
+                            <span class="text-slate-300 font-bold tracking-wide">3순위: 중앙 구역 (Center)</span>
+                            <span class="text-yellow-400 font-black orbitron">가중치 4</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- 컨트롤 -->
-        <div class="flex gap-2">
-            <button onclick="resetAll()"
-                class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-bold">초기화</button>
-            <button onclick="copyTactics()"
-                class="flex-1 py-3 bg-indigo-900 hover:bg-indigo-800 rounded-xl text-sm font-bold">전술 복사</button>
+        <!-- 하단 전술 가이드 수평 바 -->
+        <div class="glass-panel p-4 mb-6 border-l-4 border-cyan-500 flex flex-col md:flex-row gap-4 items-center shrink-0">
+            <div class="flex items-center gap-3 w-full md:w-auto justify-center border-b md:border-b-0 md:border-r border-white/10 pb-3 md:pb-0 md:pr-6 shrink-0">
+                <span class="text-2xl animate-pulse">💡</span>
+                <h3 class="font-bold text-cyan-400 text-sm whitespace-nowrap tracking-widest">핵심 전술 가이드</h3>
+            </div>
+            <p class="text-[12px] text-slate-300 leading-relaxed text-center md:text-left flex-grow font-medium">
+                <span class="inline-block mb-1"><strong class="text-white text-cyan-300">1단계:</strong> 보스 인접 <strong class="text-cyan-400">변 구역(2,4,6,8)</strong> 우선 점령으로 딜로스 최소화 및 전술 공간 확보</span><br>
+                <span class="inline-block mb-1"><strong class="text-white text-purple-300">2단계:</strong> 변이 차단되면 인접 <strong class="text-purple-400">모서리(1,3,7,9)</strong> 구역으로 우회 기동</span><br>
+                <span class="inline-block"><strong class="text-white text-yellow-300">3단계:</strong> <strong class="text-yellow-400">중앙(5번)</strong>은 가중치 14 이상 또는 전멸 직전에만 사용하는 <strong class="text-yellow-400 underline underline-offset-2">최후의 방패</strong></span>
+                <span class="text-indigo-300 text-[10px] mt-2 block bg-indigo-950/30 p-1.5 rounded text-center md:text-left border border-indigo-900/30">
+                    <strong class="text-indigo-200" id="diff-objective">작전 목표 대기 중...</strong>
+                </span>
+            </p>
+        </div>
+
+        <div class="flex gap-4 shrink-0">
+            <button id="btn-reset" class="flex-1 py-5 bg-red-950/30 border border-red-900/50 text-red-400 text-sm font-black tracking-[0.2em] transition-all hover:bg-red-900/50 hover:border-red-500 shadow-lg rounded orbitron">
+                전장 초기화
+            </button>
+            <button id="btn-title" class="flex-1 py-5 bg-indigo-950/30 border border-indigo-900/50 text-indigo-300 text-sm font-black tracking-[0.2em] transition-all hover:bg-indigo-900/50 hover:border-indigo-500 shadow-lg rounded orbitron">
+                타이틀 화면으로
+            </button>
         </div>
     </div>
 
-    <!-- 빙고 레이어 -->
-    <div id="alert-layer" class="fixed inset-0 bg-red-950/95 flex flex-col items-center justify-center z-50 hidden">
-        <div class="text-center p-8">
-            <h2 class="text-4xl font-black text-white mb-2">끝없는 행진</h2>
-            <p class="text-red-300 mb-8 tracking-widest text-sm font-bold">전멸 기믹 발동</p>
-            <button onclick="resetAll()" class="px-10 py-4 bg-white text-red-900 rounded-full font-bold">재시작</button>
-        </div>
+    <!-- 전멸 오버레이 -->
+    <div id="alert-layer" class="fixed inset-0 bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center z-[100] hidden p-10 text-center">
+        <h2 class="text-7xl md:text-9xl font-black text-red-600 mb-4 tracking-tighter italic drop-shadow-[0_0_50px_rgba(220,38,38,0.8)] orbitron glitch-text" data-text="WIPED">WIPED</h2>
+        <p class="text-red-300 mb-14 font-bold tracking-[0.4em] text-sm border-y border-red-900/50 py-4 px-12 bg-red-950/30 uppercase">전멸 프로토콜: 임계 전술 질량 도달</p>
+        <button id="btn-reboot" class="px-16 py-6 bg-white text-black font-black text-xl tracking-widest hover:scale-105 active:scale-95 shadow-[0_0_40px_rgba(255,255,255,0.4)] transition-transform rounded orbitron">시스템 재부팅</button>
     </div>
 
     <script>
-        const container = document.getElementById('grid-container');
-        const instruction = document.getElementById('instruction');
-        const heroicNotes = document.getElementById('heroic-notes');
-        const mythicNotes = document.getElementById('mythic-notes');
-        const diffTag = document.getElementById('diff-tag');
-        const overlay = document.getElementById('alert-layer');
+        // === 오디오 관리 (지연 초기화 적용) ===
+        let audioCtx = null;
+        let soundEnabled = true;
 
-        let currentDiff = 'normal';
-        let cells = Array(9).fill(null).map(() => ({ occupied: false, shell: 0 }));
-
-        function setDifficulty(d) {
-            currentDiff = d;
-            ['normal', 'heroic', 'mythic'].forEach(mode => {
-                const btn = document.getElementById(`btn-${mode}`);
-                btn.className = mode === d ?
-                    `py-2 text-xs font-bold rounded-xl ${mode === 'mythic' ? 'bg-yellow-600 border-yellow-500' : 'bg-indigo-600 border-indigo-500'} text-white border` :
-                    "py-2 text-xs font-bold rounded-lg bg-slate-800 text-slate-400 border border-slate-700";
-            });
-
-            diffTag.innerText = d.toUpperCase();
-            diffTag.className = `px-2 py-1 rounded text-[10px] font-bold border ${d === 'mythic' ? 'bg-yellow-950 border-yellow-600 text-yellow-500' : 'bg-slate-800 border-slate-700 text-slate-400'}`;
-
-            heroicNotes.classList.toggle('hidden', d !== 'heroic');
-            mythicNotes.classList.toggle('hidden', d !== 'mythic');
-            resetAll();
-        }
-
-        function createGrid() {
-            container.innerHTML = '';
-            cells.forEach((cell, i) => {
-                const div = document.createElement('div');
-                div.className = `void-cell bg-slate-950 border-2 border-slate-800 rounded-2xl flex items-center justify-center ${cell.occupied ? 'void-occupied' : ''} ${currentDiff === 'mythic' && cell.shell > 0 ? 'cosmic-shell' : ''}`;
-                div.innerHTML = `<span class="text-slate-700 font-bold text-xl">${i + 1}</span>`;
-
-                if (currentDiff === 'mythic' && cell.shell > 0) {
-                    div.innerHTML += `<span class="shell-indicator">S:${cell.shell}</span>`;
-                }
-
-                if (currentDiff === 'heroic' && !cell.occupied) {
-                    const gather = document.createElement('div');
-                    gather.className = "gather-point";
-                    gather.innerText = "G";
-                    div.appendChild(gather);
-                }
-
-                div.onclick = () => handleAction(i);
-                container.appendChild(div);
-            });
-        }
-
-        function handleAction(i) {
-            const cell = cells[i];
-            if (currentDiff === 'mythic' && !cell.occupied && cell.shell > 0) {
-                cell.shell--;
-                instruction.innerText = `${i + 1}번 보호막 약화 중 (${cell.shell}/2)`;
-            } else {
-                cell.occupied = !cell.occupied;
-                instruction.innerText = cell.occupied ? `${i + 1}번 구역 점령` : `점령 해제`;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
-            checkBingo();
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playComplexSound(type) {
+            if (!soundEnabled) return;
+            initAudio();
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            const now = audioCtx.currentTime;
+
+            switch(type) {
+                case 'start':
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.exponentialRampToValueAtTime(400, now + 0.3);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                    osc.start(now); osc.stop(now + 0.5);
+                    break;
+                case 'place_boss':
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(80, now);
+                    osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                    osc.start(now); osc.stop(now + 0.2);
+                    break;
+                case 'toggle_on':
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.linearRampToValueAtTime(400, now + 0.1);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now); osc.stop(now + 0.15);
+                    break;
+                case 'toggle_off':
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(200, now);
+                    osc.frequency.linearRampToValueAtTime(150, now + 0.1);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now); osc.stop(now + 0.15);
+                    break;
+                case 'break_shell':
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(600, now);
+                    osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                    osc.start(now); osc.stop(now + 0.1);
+                    break;
+                case 'bingo':
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(100, now);
+                    osc.frequency.linearRampToValueAtTime(50, now + 0.8);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.8);
+                    osc.start(now); osc.stop(now + 0.8);
+                    break;
+                case 'ui_click':
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(500, now);
+                    gain.gain.setValueAtTime(0.05, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                    osc.start(now); osc.stop(now + 0.1);
+                    break;
+            }
+        }
+
+        // 스플래시 화면 숨기기
+        function hideSplash() {
+            playComplexSound('start');
+            document.getElementById('splash-screen').classList.add('hidden-splash');
+            setTimeout(() => { document.getElementById('splash-screen').style.display = 'none'; }, 800);
+        }
+
+        // 스플래시 화면 보이기 (타이틀로 돌아가기)
+        function showSplash() {
+            playComplexSound('ui_click');
+            const splash = document.getElementById('splash-screen');
+            splash.style.display = 'flex';
+            setTimeout(() => { splash.classList.remove('hidden-splash'); }, 10);
+            resetAll(false);
+        }
+
+        const container = document.getElementById('grid-container');
+        const overlay = document.getElementById('alert-layer');
+        const bingoVisual = document.getElementById('bingo-visual');
+        const bossEntity = document.getElementById('boss-entity');
+        const statTotalWeight = document.getElementById('stat-total-weight');
+        const statMaxLine = document.getElementById('stat-max-line');
+        const statSuggested = document.getElementById('stat-suggested');
+        const suggestCard = document.getElementById('suggest-card');
+        const suggestSubtitle = document.getElementById('suggest-subtitle');
+        const diffObjective = document.getElementById('diff-objective');
+        
+        let currentDiff = 'normal';
+        let bossCoord = null; 
+        let cells = Array(9).fill(null).map(() => ({ occupied: false, shell: 0 }));
+        
+        const WEIGHTS = [3, 2, 3, 2, 4, 2, 3, 2, 3];
+        const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+        
+        function getGridDist(idx1, idx2) {
+            if (idx1 < 0 || idx1 > 8 || idx2 < 0 || idx2 > 8) return 999;
+            const x1 = idx1 % 3, y1 = Math.floor(idx1 / 3);
+            const x2 = idx2 % 3, y2 = Math.floor(idx2 / 3);
+            return Math.hypot(x1 - x2, y1 - y2);
+        }
+
+        function calculateStrategy() {
+            let total = 0; 
+            cells.forEach((c, i) => { if (c.occupied) total += WEIGHTS[i]; }); 
+            statTotalWeight.innerText = `${total} / 14`;
+            
+            let maxLineCount = 0; 
+            let hasAny = cells.some(c => c.occupied);
+            LINES.forEach(line => { 
+                const count = line.filter(idx => cells[idx].occupied).length; 
+                if (count > maxLineCount) maxLineCount = count; 
+            });
+            
+            statMaxLine.innerText = Math.round((maxLineCount / 3) * 100) + "%";
+            statMaxLine.setAttribute('data-text', statMaxLine.innerText);
+
+            if (!hasAny || !bossCoord) { 
+                resetSuggestUI("대기", "text-slate-500", "slate", "작전 지시 대기 중"); 
+                return -1; 
+            }
+
+            const bx = Math.floor(bossCoord.x / 33.34);
+            const by = Math.floor(bossCoord.y / 33.34);
+            const bossIdx = by * 3 + bx;
+
+            const PRIORITY_SIDES = [1, 3, 5, 7]; 
+            const PRIORITY_CORNERS = [0, 2, 6, 8]; 
+
+            const isBingoThreatened = (target) => {
+                for (let line of LINES) {
+                    if (line.includes(target) && line.filter(idx => cells[idx].occupied).length === 2 && !cells[target].occupied) return true;
+                }
+                return false;
+            };
+
+            // 1단계: 변
+            let bestSideIdx = -1;
+            let minSideDist = Infinity;
+            for (let idx of PRIORITY_SIDES) {
+                if (cells[idx].occupied) continue;
+                if (isBingoThreatened(idx)) continue; 
+
+                const dist = getGridDist(bossIdx, idx);
+                if (dist < minSideDist) {
+                    minSideDist = dist;
+                    bestSideIdx = idx;
+                }
+            }
+            if (bestSideIdx !== -1) {
+                resetSuggestUI(`#${bestSideIdx + 1}`, "text-cyan-400 drop-shadow-[0_0_40px_rgba(34,211,238,0.9)]", "cyan", "최적: 인접 변 구역 우선 확보");
+                return bestSideIdx;
+            }
+
+            // 2단계: 모서리
+            let bestCornerIdx = -1;
+            let minCornerDist = Infinity;
+            for (let idx of PRIORITY_CORNERS) {
+                if (cells[idx].occupied) continue;
+                if (isBingoThreatened(idx)) continue; 
+
+                const dist = getGridDist(bossIdx, idx);
+                if (dist < minCornerDist) {
+                    minCornerDist = dist;
+                    bestCornerIdx = idx;
+                }
+            }
+            if (bestCornerIdx !== -1) {
+                resetSuggestUI(`#${bestCornerIdx + 1}`, "text-purple-400 drop-shadow-[0_0_40px_rgba(192,132,252,0.9)]", "purple", "차선: 인접 모서리 우회 기동");
+                return bestCornerIdx;
+            }
+
+            // 3단계: 중앙
+            let centerDesperate = isBingoThreatened(4);
+            if (!cells[4].occupied && (total >= 14 || centerDesperate)) {
+                resetSuggestUI("#5", "text-yellow-400 drop-shadow-[0_0_40px_rgba(250,204,21,0.9)]", "yellow", "위급: 중앙 방어선 최후 전개");
+                return 4;
+            }
+
+            resetSuggestUI("위험", "text-red-500 drop-shadow-[0_0_30px_rgba(239,68,68,0.8)]", "red", "경고: 모든 안전 궤도 고갈");
+            return -1;
+        }
+
+        function resetSuggestUI(text, textClass, colorName, subText) {
+            statSuggested.innerText = text; 
+            statSuggested.className = `text-7xl font-black orbitron mb-4 ${textClass}`;
+            suggestCard.style.borderColor = `var(--neon-${colorName === 'slate' ? 'blue' : colorName})`;
+            suggestSubtitle.innerText = subText;
+            suggestSubtitle.className = `text-[11px] font-bold tracking-wider text-${colorName === 'slate' ? 'indigo' : colorName}-300`;
+        }
+
+        function handleInteraction(e) {
+            const rect = container.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            
+            if (e.button === 0) { 
+                const idx = Math.floor(y / 33.34) * 3 + Math.floor(x / 33.34); 
+                if (idx >= 0 && idx < 9) { 
+                    if (currentDiff === 'mythic' && !cells[idx].occupied && cells[idx].shell > 0) {
+                        cells[idx].shell--;
+                        playComplexSound('break_shell');
+                    } else {
+                        cells[idx].occupied = !cells[idx].occupied; 
+                        cells[idx].shell = (cells[idx].occupied ? 0 : (currentDiff === 'mythic' ? 2 : 0));
+                        playComplexSound(cells[idx].occupied ? 'toggle_on' : 'toggle_off');
+                    }
+                } 
+            } 
+            else if (e.button === 2) { 
+                bossCoord = { x, y }; 
+                bossEntity.style.display = 'block'; 
+                bossEntity.style.left = x + '%'; 
+                bossEntity.style.top = y + '%'; 
+                playComplexSound('place_boss');
+            }
             createGrid();
+        }
+
+        function setDifficulty(d) { 
+            currentDiff = d; 
+            playComplexSound('ui_click');
+            
+            document.querySelectorAll('.diff-btn').forEach(btn => {
+                const mode = btn.id.replace('btn-', '');
+                btn.className = `diff-btn text-xs px-5 py-3 font-bold rounded tracking-widest transition-all ${mode === d ? 'bg-indigo-600 border border-indigo-500 text-white shadow-[0_0_15px_rgba(79,70,229,0.5)]' : 'bg-indigo-950/50 border border-indigo-800 text-indigo-300 hover:bg-indigo-600 hover:text-white'}`;
+            });
+            
+            if (d === 'normal') { 
+                diffObjective.innerHTML = "[일반] 기본 빙고 회피 및 전술적 공간 확보"; 
+            } else if (d === 'heroic') { 
+                diffObjective.innerHTML = "[영웅] 외곽 궤도 순환 및 <strong class='text-white'>산개(Soaking) 공간</strong> 상시 확보"; 
+            } else if (d === 'mythic') { 
+                diffObjective.innerHTML = "[신화] <strong class='text-white'>우주 보호막(Shell)</strong> 분산 해제 및 절대 파킹 궤도 엄수"; 
+            }
+            resetAll(false); 
+        }
+        
+        function createGrid() {
+            const bestIdx = calculateStrategy();
+            const cellElements = container.querySelectorAll('.void-cell');
+            
+            // DOM 렌더링 최적화: 초기 생성 1회만 수행
+            if (cellElements.length === 0) { 
+                for (let i = 0; i < 9; i++) { 
+                    const div = document.createElement('div'); 
+                    div.className = 'void-cell'; 
+                    
+                    const numSpan = document.createElement('span');
+                    numSpan.className = 'number-label';
+                    numSpan.innerText = i + 1;
+                    div.appendChild(numSpan);
+                    
+                    const shellSpan = document.createElement('span');
+                    shellSpan.className = 'shell-indicator';
+                    shellSpan.style.display = 'none';
+                    div.appendChild(shellSpan);
+
+                    const soakSpan = document.createElement('span');
+                    soakSpan.className = 'soaking-mark';
+                    soakSpan.innerText = '산개 구역';
+                    soakSpan.style.display = 'none';
+                    div.appendChild(soakSpan);
+
+                    container.appendChild(div); 
+                } 
+            }
+            
+            // 상태 업데이트 처리
+            const updatedCellElements = container.querySelectorAll('.void-cell');
+            updatedCellElements.forEach((div, i) => {
+                let classes = 'void-cell';
+                if (cells[i].occupied) classes += ' void-occupied';
+                if (currentDiff === 'mythic' && !cells[i].occupied && cells[i].shell > 0) classes += ' cosmic-shell';
+                if (bestIdx === i && !cells[i].occupied) classes += ' suggested-light';
+                div.className = classes;
+
+                const shellInd = div.querySelector('.shell-indicator');
+                if (currentDiff === 'mythic' && !cells[i].occupied && cells[i].shell > 0) { 
+                    shellInd.style.display = 'block';
+                    shellInd.innerText = `보호막:${cells[i].shell}`; 
+                } else {
+                    shellInd.style.display = 'none';
+                }
+
+                const soakMark = div.querySelector('.soaking-mark');
+                if (currentDiff === 'heroic' && !cells[i].occupied && bestIdx !== i) {
+                    soakMark.style.display = 'block';
+                } else {
+                    soakMark.style.display = 'none';
+                }
+            });
+            checkBingo();
         }
 
         function checkBingo() {
-            const lines = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
-            if (lines.some(line => line.every(idx => cells[idx].occupied))) overlay.classList.remove('hidden');
+            bingoVisual.innerHTML = ''; 
+            const win = LINES.find(l => l.every(idx => cells[idx].occupied));
+            if (win) {
+                playComplexSound('bingo');
+                const line = document.createElement('div'); line.className = 'bingo-line';
+                const f = win[0], l = win[2], isH = Math.floor(f/3)===Math.floor(l/3), isV = f%3===l%3;
+                line.style.cssText = isH ? `width:100%;height:8px;top:${Math.floor(f/3)*33.33+16.66}%;left:0` : isV ? `width:8px;height:100%;left:${(f%3)*33.33+16.66}%;top:0` : `width:140%;height:8px;top:50%;left:50%;transform:translate(-50%,-50%) rotate(${f===0?45:-45}deg)`;
+                bingoVisual.appendChild(line); 
+                setTimeout(() => overlay.classList.remove('hidden'), 600);
+            }
         }
 
-        function resetAll() {
-            cells = Array(9).fill(null).map(() => ({ occupied: false, shell: currentDiff === 'mythic' ? 2 : 0 }));
-            instruction.innerText = "구역을 선택하여 점령을 표시하십시오.";
-            overlay.classList.add('hidden');
-            createGrid();
+        function resetAll(playSound = true) { 
+            if(playSound) playComplexSound('ui_click');
+            cells = Array(9).fill(null).map(() => ({ occupied: false, shell: currentDiff === 'mythic' ? 2 : 0 })); 
+            bossCoord = null; 
+            bossEntity.style.display = 'none'; 
+            bingoVisual.innerHTML = ''; 
+            overlay.classList.add('hidden'); 
+            
+            // DOM 재생성을 위해 그리드 안의 자식(void-cell) 제거
+            const existingCells = container.querySelectorAll('.void-cell');
+            existingCells.forEach(cell => cell.remove());
+            
+            createGrid(); 
         }
 
-        function copyTactics() {
-            const list = cells.map((c, i) => c.occupied ? i + 1 : null).filter(n => n).join(', ');
-            const text = `[작전 데이터] 난이도: ${currentDiff.toUpperCase()} / 점령지: ${list || '없음'}`;
-            const t = document.createElement("textarea");
-            document.body.appendChild(t); t.value = text; t.select();
-            document.execCommand('copy'); document.body.removeChild(t);
-            const prev = instruction.innerText; instruction.innerText = "데이터가 복사되었습니다.";
-            setTimeout(() => instruction.innerText = prev, 1500);
+        // === 이벤트 리스너 연결 ===
+        // 기존 HTML 속성에서 선언했던 onclick 이벤트 대신 여기서 안전하게 바인딩합니다.
+        document.getElementById('splash-screen').addEventListener('click', hideSplash);
+        
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('toggle-sound').innerText = soundEnabled ? "🔊 소리 켬" : "🔇 소리 끔";
+            document.getElementById('toggle-sound').classList.toggle('text-white', soundEnabled);
+            if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+            playComplexSound('ui_click');
         }
 
-        createGrid();
+        document.getElementById('toggle-sound').addEventListener('click', toggleSound);
+        document.getElementById('btn-normal').addEventListener('click', () => setDifficulty('normal'));
+        document.getElementById('btn-heroic').addEventListener('click', () => setDifficulty('heroic'));
+        document.getElementById('btn-mythic').addEventListener('click', () => setDifficulty('mythic'));
+        document.getElementById('btn-reset').addEventListener('click', () => resetAll(true));
+        document.getElementById('btn-title').addEventListener('click', showSplash);
+        document.getElementById('btn-reboot').addEventListener('click', () => resetAll(true));
+
+        container.addEventListener('mousedown', handleInteraction);
+        container.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // 초기화
+        setDifficulty('normal');
     </script>
 </body>
-
 </html>
